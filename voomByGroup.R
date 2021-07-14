@@ -1,4 +1,4 @@
-voomByGroup <- function (counts, group = NULL, design = NULL, lib.size = NULL, normalize.method = "none", 
+voomByGroup <- function (counts, group = NULL, design = NULL, lib.size = NULL, normalize.method = "none", sample.weight = FALSE,
                          span = 0.5, save.plot = FALSE, print = TRUE, plot = c("none", "all", "separate", "combine"), 
                          col.lines = NULL, pos.legend = c("inside", "outside", "none"), 
                          fix.y.axis = FALSE, ...) 
@@ -53,6 +53,7 @@ voomByGroup <- function (counts, group = NULL, design = NULL, lib.size = NULL, n
   if(print)
     cat("Group:\n")
   E <- w <- counts
+  aw <- E[1,]
   xy <- line <- as.list(rep(NA, ngroups))
   names(xy) <- names(line) <- levgroup
   for (lev in 1L:ngroups) {
@@ -67,8 +68,14 @@ voomByGroup <- function (counts, group = NULL, design = NULL, lib.size = NULL, n
       designi <- designi[,QR$pivot[1L:QR$rank], drop = FALSE]
     if(ncol(designi)==ncol(countsi))
       designi <- matrix(1L, ncol(countsi), 1)
-    voomi <- voom(counts = countsi, design = designi, lib.size = libsizei, normalize.method = normalize.method, 
-                  span = span, plot = FALSE, save.plot = TRUE, ...)
+    if (sample.weight==TRUE){
+      voomi <- voomWithQualityWeights(counts = countsi, design = designi, lib.size = libsizei, normalize.method = normalize.method, 
+                                      span = span, plot = FALSE, save.plot = TRUE, ...)
+      aw[i] <- voomi$targets$sample.weights
+    }else{
+      voomi <- voom(counts = countsi, design = designi, lib.size = libsizei, normalize.method = normalize.method, 
+                    span = span, plot = FALSE, save.plot = TRUE, ...)
+    }
     E[, i] <- voomi$E
     w[, i] <- voomi$weights
     xy[[lev]] <- voomi$voom.xy
@@ -131,6 +138,9 @@ voomByGroup <- function (counts, group = NULL, design = NULL, lib.size = NULL, n
   out$E <- E
   out$weights <- w
   out$design <- design
+  if(sample.weight){
+    out$targets$sample.weights <- aw
+  }
   if(save.plot){
     out$voom.line <- line
     out$voom.xy <- xy
