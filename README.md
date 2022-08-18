@@ -1,6 +1,7 @@
 # voomByGroup
 This github repository provides
-- The source code of function **voomByGroup** 
-- Example script to run DE analysis with **voomByGroup** 
-- Scripts for simulations and analysis of COVID-19 patients data from our preprint: [Modeling group heteroscedasticity for pseudo-bulk samples in single-cell RNA-seq data.]{link here}
+- the source code of function [**voomByGroup**] (https://github.com/YOU-k/voomByGroup/voomByGroup.R)
+- [example script](https://github.com/YOU-k/voomByGroup/example/Example_voomByGroup.html) to run DE analysis with **voomByGroup**
+- [scripts](https://github.com/YOU-k/voomByGroup/scripts) for simulations and analysis of COVID-19 patients data from our preprint: [Modeling group heteroscedasticity for pseudo-bulk samples in single-cell RNA-seq data](link here).
 
+![image](https://github.com/YOU-k/voomByGroup/example/choose_method.png)
