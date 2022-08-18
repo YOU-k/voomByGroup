@@ -1,9 +1,9 @@
-voomByGroup <- function (counts, group = NULL, design = NULL, lib.size = NULL, normalize.method = "none", sample.weight = FALSE,
+voomByGroup <- function (counts, group = NULL, design = NULL, lib.size = NULL, dynamic = NULL, normalize.method = "none", 
                          span = 0.5, save.plot = FALSE, print = TRUE, plot = c("none", "all", "separate", "combine"), 
                          col.lines = NULL, pos.legend = c("inside", "outside", "none"), 
                          fix.y.axis = FALSE, ...) 
-  # 14 June 2017 (Last updated 22 March 2019)
-  # Charity Law and Xueyi Dong
+  # 14 June 2017 (Last updated 6 May 2022)
+  # Charity Law, Xueyi Dong and Yue You
 {
   # Counts
   out <- list()
@@ -49,11 +49,14 @@ voomByGroup <- function (counts, group = NULL, design = NULL, lib.size = NULL, n
     rownames(design) <- colnames(counts)
     colnames(design) <- "GrandMean"
   }
+  # Dynamic
+  if (is.null(dynamic)) {
+    dynamic <- rep(FALSE, ngroups)
+  }
   # voom by group  
   if(print)
     cat("Group:\n")
   E <- w <- counts
-  aw <- E[1,]
   xy <- line <- as.list(rep(NA, ngroups))
   names(xy) <- names(line) <- levgroup
   for (lev in 1L:ngroups) {
@@ -68,18 +71,25 @@ voomByGroup <- function (counts, group = NULL, design = NULL, lib.size = NULL, n
       designi <- designi[,QR$pivot[1L:QR$rank], drop = FALSE]
     if(ncol(designi)==ncol(countsi))
       designi <- matrix(1L, ncol(countsi), 1)
-    if (sample.weight==TRUE){
-      voomi <- voomWithQualityWeights(counts = countsi, design = designi, lib.size = libsizei, normalize.method = normalize.method, 
-                                      span = span, plot = FALSE, save.plot = TRUE, ...)
-      aw[i] <- voomi$targets$sample.weights
-    }else{
-      voomi <- voom(counts = countsi, design = designi, lib.size = libsizei, normalize.method = normalize.method, 
-                    span = span, plot = FALSE, save.plot = TRUE, ...)
-    }
+    voomi <- voom(counts = countsi, design = designi, lib.size = libsizei, normalize.method = normalize.method, 
+                  span = span, plot = FALSE, save.plot = TRUE, ...)
     E[, i] <- voomi$E
     w[, i] <- voomi$weights
     xy[[lev]] <- voomi$voom.xy
     line[[lev]] <- voomi$voom.line
+  }
+  #voom overall
+  if (TRUE %in% dynamic){
+    voom_all <- voom(counts = counts, design = design, lib.size = lib.size, normalize.method = normalize.method, 
+                     span = span, plot = FALSE, save.plot = TRUE, ...)
+    E_all <- voom_all$E
+    w_all <- voom_all$weights
+    xy_all <- voom_all$voom.xy
+    line_all <- voom_all$voom.line
+    
+    dge <- DGEList(counts)
+    disp <- estimateCommonDisp(dge)
+    disp_all <- disp$common
   }
   # Plot, can be "both", "none", "separate", or "combine"
   plot <- plot[1]
@@ -106,8 +116,10 @@ voomByGroup <- function (counts, group = NULL, design = NULL, lib.size = NULL, n
         title(paste("voom: Mean-variance trend,", levgroup[lev]))
         lines(line[[lev]], col = "red")
         legend("topleft", bty="n", paste("BCV:", round(sqrt(disp.group[lev]), 3)), text.col="red")
-      }  
+      }
     }
+    
+    
     if(plot %in% c("all", "combine")){
       if(is.null(col.lines))
         col.lines <- 1L:ngroups
@@ -119,6 +131,14 @@ voomByGroup <- function (counts, group = NULL, design = NULL, lib.size = NULL, n
       yrange <- c(min(yrange)-0.1, max(yrange)+0.3)
       plot(1L,1L, type="n", ylim=yrange, xlim=xrange, xlab = "log2( count size + 0.5 )", ylab = "Sqrt( standard deviation )")
       title("voom: Mean-variance trend")
+      if (TRUE %in% dynamic){
+        for (dy in which(dynamic)){
+          line[[dy]] <- line_all 
+          disp.group[dy] <- disp_all
+          levgroup[dy] <- paste0(levgroup[dy]," (all)")
+        }
+        
+      }
       for (lev in 1L:ngroups) 
         lines(line[[lev]], col=col.lines[lev], lwd=2)
       pos.legend <- pos.legend[1]
@@ -135,12 +155,13 @@ voomByGroup <- function (counts, group = NULL, design = NULL, lib.size = NULL, n
     }
   }
   # Output  
+  if (TRUE %in% dynamic){
+    E[,intgroup %in% which(dynamic)] <- E_all[,intgroup %in% which(dynamic)]
+    w[,intgroup %in% which(dynamic)] <- w_all[,intgroup %in% which(dynamic)]
+  }
   out$E <- E
   out$weights <- w
   out$design <- design
-  if(sample.weight){
-    out$targets$sample.weights <- aw
-  }
   if(save.plot){
     out$voom.line <- line
     out$voom.xy <- xy
