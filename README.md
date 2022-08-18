@@ -1,7 +1,7 @@
 # voomByGroup
 This github repository provides
 - The source code of function [**voomByGroup**](https://github.com/YOU-k/voomByGroup/blob/main/voomByGroup.R)
-- [Help page](https://github.com/YOU-k/voomByGroup/blob/main/example/Example_voomByGroup.html) about how to run DE analysis with **voom** and its derived methods (**voomWithQualityWeights** (with and without block), **voomByGroup**). Comparison between results obtained from them are included as well.
+- [Help page](https://htmlpreview.github.io/https://github.com/YOU-k/voomByGroup/blob/main/example/Example_voomByGroup.html) about how to run DE analysis with **voom** and its derived methods (**voomWithQualityWeights** (with and without block), **voomByGroup**). Comparison between results obtained from them are included as well.
 - [Scripts](https://github.com/YOU-k/voomByGroup/scripts) for simulations and analysis of COVID-19 patients data from our preprint: [Modeling group heteroscedasticity for pseudo-bulk samples in single-cell RNA-seq data](https://www.overleaf.com/project/623818bbca6c8f055c155faf).
 
 ![image](./example/choose_method.png)
