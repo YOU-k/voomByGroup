@@ -1,29 +1,146 @@
 ---
-title: "Example_voomByGroup"
-output: html_document
-date: '2022-08-18'
+title: "Using voomByGroup with RNA-seq data"
+author: Yue You
+output:
+ html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+    theme: united
+    highlight: textmate
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+## Overview
+Group heteroscedasticity is commonly observed in pseudo-bulk single cell RNA-seq datasets and when not modelled appropriately, its presence can hamper the detection of differentially expressed genes. Here, we introduce two methods that account for heteroscedastic groups, namely ```voomByGroup``` and ```voomWithQualityWeights``` using a blocked design (voomQWB). 
+Since they are both ```voom``` derived methods, to illustrate how to use them and provide you an idea of the difference between results they generated, we will follow the standard RNA-seq analysis workflow using **limma** from [RNASeq123](https://f1000research.com/articles/5-1408).
+Whilst we use pseudo-bulk samples in this help page, the idea of modelling group variances more closely can in theory be extended to DE analysis on other data types, such as bulk RNA-seq data, pseudo-bulk of spatial scRNA-seq data, and surface protein data from CITE-seq.
+
+## Loading and processing the data
+
+The data we use here is the COVID-19 PBMC data used in our preprint. CD56dim CD16+ NK cells are extracted to create pseudo-bulk samples. rds files are provided in our github, under the folder example/data.
+
+```{r,message=FALSE, warning=FALSE}
+library(limma)
+library(edgeR)
 ```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r,message=FALSE, warning=FALSE}
+readRDS("/stornext/HPCScratch/home/you.y/DE_realdata/summary/counts.rds") -> counts
+readRDS("/stornext/HPCScratch/home/you.y/DE_realdata/summary/group_id.rds") -> group_id
 ```
 
-## Including Plots
+Filter out lowly expressed genes and create a DGElist object.
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r,message=FALSE, warning=FALSE}
+counts[rowSums(counts)>50,]-> counts_k
+#create a DGElist
+DGEList(counts_k) -> y
+#normalization
+y <- calcNormFactors(y)
+y$samples$group <- group_id
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Make the design matrix based on group information we have.
+
+```{r,message=FALSE, warning=FALSE}
+cd <- y$samples$group
+model.matrix(~0+cd) -> design
+design
+```
+
+Make contrasts for pairwise comparisons between cell populations based on our design matrix.
+
+```{r,message=FALSE, warning=FALSE}
+contr.matrix <- makeContrasts(
+  AvsH = cdAsymptomatic - cdHC,
+  MvsH = cdModerate - cdHC,
+  MvsA = cdModerate- cdAsymptomatic,
+  levels = colnames(design))
+contr.matrix
+```
+
+Have a check on the MDS plot.
+
+```{r,message=FALSE, warning=FALSE,fig.height = 5, fig.width = 5}
+cols=y$samples$group
+table(cols)
+cols[cols=="Asymptomatic"]<- "red"
+cols[cols=="HC"]<- "blue"
+cols[cols=="Moderate"]<- "orange"
+par(mfrow=c(1,1))
+limma::plotMDS(y,col=cols)
+```
+
+As we can see here, based on the MDS plot, samples from HC exhibit relatively lower group variation with all three samples sitting close to each other, while samples from moderate and asymptomatic patients exhibit relatively more variation. 
+
+
+## Removing heteroscedascity from count data
+
+Before we fit a linear model to find the DE genes, we need to deal with the dependency between mean and variance from RNA-seq data. ```voom``` was originally designed to model the mean-variance relationship based on a ''voom-plot'', and the calculate an precision weight for each observation based its estimated variance. 
+Based on ```voom```, 3 derived strategies are introduced, including ```voomWithQualityWeights``` to take sample variability into account, ```voomWithQualityWeights``` with block used and ```voomByGroup``` to take group-wise variability into account. Details of difference between their strategies are covered in our preprint.
+
+### voom
+
+```{r,message=FALSE, warning=FALSE ,fig.height = 3, fig.width = 3}
+voom(y, design = design, plot = TRUE) -> y_voom
+```
+
+### voomWithQualityWeights
+
+```{r,message=FALSE, warning=FALSE,fig.height = 3, fig.width = 6}
+voomWithQualityWeights(y, design = design, plot = TRUE) -> y_vqw
+```
+
+### voomWithQualityWeights (block)
+
+```{r,message=FALSE, warning=FALSE,fig.height = 3, fig.width = 6}
+voomWithQualityWeights(y, design = design, var.group= cd, plot = TRUE) -> y_qwb
+```
+
+### voomByGroup
+
+```{r,message=FALSE, warning=FALSE,fig.height = 6, fig.width = 6}
+source("/stornext/HPCScratch/home/you.y/simulation/functions/voomByGroup.R")
+voomByGroup(y,design = design, group = cd, plot = "combine") -> y_vbg
+```
+
+## Differential expression analysis
+
+Then we fit the linear model.
+
+```{r,message=FALSE, warning=FALSE}
+find_de <- function(y, design ,contr.matrix) {
+ fit <- lmFit(y, design)
+ vfit <- contrasts.fit(fit, contrasts=contr.matrix)
+ tfit <- treat(vfit, lfc=0)
+ decideTests(tfit) -> de
+ return(de)
+}
+```
+
+```{r,message=FALSE, warning=FALSE}
+find_de(y_voom, design, contr.matrix) -> de_voom
+summary(de_voom)
+```
+
+```{r,message=FALSE, warning=FALSE}
+find_de(y_vqw, design, contr.matrix) -> de_vqw
+summary(de_vqw)
+```
+
+```{r,message=FALSE, warning=FALSE}
+find_de(y_qwb, design, contr.matrix) -> de_qwb
+summary(de_qwb)
+```
+
+```{r,message=FALSE, warning=FALSE}
+find_de(y_vbg, design, contr.matrix) -> de_vbg
+summary(de_vbg)
+```
+
+## Comparing between the DE genes 
+
+```{r,message=FALSE, warning=FALSE,fig.height = 5, fig.width = 5}
+vennDiagram(cbind(de_voom[,1],de_vqw[,1],de_qwb[,1],de_vbg[,1]),
+            circle.col=c("turquoise","salmon","green","purple"))
+```
