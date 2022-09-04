@@ -1,4 +1,4 @@
-simscRNAseq4 <- function(mu,phi,subject,correlation,n1)
+simscRNAseq_group4 <- function(mu,phi,subject,correlation,group)
   # Simulate correlated negative-binomial single-cell RNA-seq counts from multiple subjects
   # Rows are genes and columns are cells.
   # Simulated counts are NB(mu, phi)
@@ -18,6 +18,10 @@ simscRNAseq4 <- function(mu,phi,subject,correlation,n1)
   NCells <- ncol(mu)
   subject <- as.factor(subject)
   NSubjects <- length(levels(subject))
+  n1=table(group)[1]
+  n2=table(group)[2]
+  n3=table(group)[3]
+  n4=table(group)[4]
   
   # Simulate correlated standard normal random variables
   z.cell <- matrix(rnorm(NGenes*NCells),NGenes,NCells)
@@ -29,18 +33,12 @@ simscRNAseq4 <- function(mu,phi,subject,correlation,n1)
   up <- (z>0)
   dn <- !up
   
-  newData <- as.data.frame(log10(rowSums(mu[,1:n1])/4))
-  colnames(newData) <- "predictor"
-  stats::predict(formula1,newData) -> phi1
-  phi1 <- matrix(phi1,NGenes,n1)
+  phi1 <- matrix(phi[1],NGenes,n1)
+  phi2 <- matrix(phi[2],NGenes,n2)
+  phi3 <- matrix(phi[3],NGenes,n3)
+  phi4 <- matrix(phi[4],NGenes,n4)
   
-  
-  newData <- as.data.frame(log10(rowSums(mu[,(n1+1):(NCells)])/4))
-  colnames(newData) <- "predictor"
-  stats::predict(formula2,newData) -> phi2
-  phi2 <- matrix(phi2,NGenes,NCells-n1)
-  
-  cbind(phi1,phi2) -> phi
+  cbind(phi1,phi2,phi3,phi4) -> phi
   z[up] <- qgamma(pnorm(z[up],lower.tail=FALSE,log.p=TRUE),shape=1/phi[up],scale=phi[up],lower.tail=FALSE,log.p=TRUE)
   z[dn] <- qgamma(pnorm(z[dn],lower.tail=TRUE,log.p=TRUE),shape=1/phi[dn],scale=phi[dn],lower.tail=TRUE,log.p=TRUE)
   

@@ -1,5 +1,7 @@
 library(limma)
 library(edgeR)
+library(SingleCellExperiment)
+
 x <- read.table("../../data/itreg_pb.txt")
 x <- as.matrix(x)
 
@@ -13,7 +15,7 @@ props1 <- list(c(1,1,1),
                c(1,3,3)) 
 
 props <- props1
-library(SingleCellExperiment)
+
 #get ncells from loop
 nx=250
 n1=round(sum(props[[1]]*nx))

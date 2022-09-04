@@ -1,5 +1,7 @@
 library(limma)
 library(edgeR)
+library(SingleCellExperiment)
+
 x <- read.table("../../data/itreg_pb.txt")
 x <- as.matrix(x)
 #get baseline prop
@@ -31,7 +33,6 @@ sim_exp_lib(sce = sce_tmp,nCells = NCells) -> exp.lib.sizes
 round(exp.lib.sizes) -> libsize
 
 library(tidyverse)
-library(SingleCellExperiment)
 df_all <- tibble()
 for (r in 1:50) {
   nx=250
