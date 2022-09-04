@@ -24,9 +24,10 @@ library(limma)
 library(edgeR)
 ```
 
+
 ```{r,message=FALSE, warning=FALSE}
-readRDS("/stornext/HPCScratch/home/you.y/DE_realdata/summary/counts.rds") -> counts
-readRDS("/stornext/HPCScratch/home/you.y/DE_realdata/summary/group_id.rds") -> group_id
+readRDS("data/counts.rds") -> counts
+readRDS("data/group_id.rds") -> group_id
 ```
 
 Filter out lowly expressed genes and create a DGElist object.
@@ -114,7 +115,7 @@ To run ```voomByGroup``` with block variability estimated, besides, **y** (count
 Here we set the **plot="combine"**, so that we have all group-wise trends summarized in one plot which makes relative differences between the curves easier to spot.
 Besides running ```voomByGroup``` to do the group-wise mean-variance modeling, we also recommend the user to use this group-specific mean-variance plots as a useful 'first glance' of the data before any formal testing was carried out
 
-```{r,message=FALSE, warning=FALSE,fig.height = 6, fig.width = 6}
+```{r,message=FALSE, warning=FALSE,fig.height = 4, fig.width = 4}
 source("/stornext/HPCScratch/home/you.y/simulation/functions/voomByGroup.R")
 voomByGroup(y,design = design, group = cd, plot = "combine") -> y_vbg
 ```

@@ -1,12 +1,8 @@
-pbmc_pb <- readRDS("/stornext/HPCScratch/home/you.y/DE_realdata/summary/pbmc_pb.rds")
+pbmc_pb <- readRDS("../../data/pbmc_pb.rds")
 k="CD56dim CD16+ NK"
 pbmc_pb -> pb_tmp
 
-
 #remove sample (A_2, J_18 for cell number below 85.)
-c("B_2","C_3","D_10","E_10","F_11","G_15","I_16") -> keep_sample
-c(keep_sample,colnames(pb_tmp)[30:38]) -> keep_sample
-pb_tmp <- pb_tmp[,colnames(pb_tmp) %in% keep_sample]
 pb_tmp <- pb_tmp[,!pb_tmp$condition=="Severe"]
 
 
@@ -30,10 +26,6 @@ contr.matrix <- makeContrasts(
 
 contr.matrix
 
-
-
-
-
 cols=y$samples$group
 table(cols)
 cols[cols=="Asymptomatic"]<- "#1B9E77"
@@ -43,7 +35,7 @@ cols[cols=="Severe"]<- "#E7298A"
 
 par(mfrow=c(1,1))
 limma::plotMDS(y,col=cols)
-source("/stornext/HPCScratch/home/you.y/simulation/functions/DE_methods.R")
+source("../functions/DE_methods.R")
 #voom
 apply_voom(y,design,contr.matrix) -> voom_result
 decideTests(voom_result) -> voom_de
@@ -61,10 +53,9 @@ topTreat(vwq_b_result,coef = 1,n=Inf) -> t_vwq_b
 
 
 #voombygroup
-apply_voombygroup(y,design=design,cd,contr.matrix,dynamic=c(FALSE,FALSE,FALSE,FALSE)) -> vbg_result
+apply_voombygroup(y,design=design,cd,contr.matrix,dynamic=NULL) -> vbg_result
 decideTests(vbg_result) -> vbg_de
 topTreat(vbg_result,coef = 1,n=Inf) -> t_vbg
-
 
 
 #lrt
@@ -106,26 +97,18 @@ de_tmp$sig[de_tmp$sig=="1"] <- "Up"
 de_tmp$sig[de_tmp$sig=="-1"] <- "Down"
 
 
-pdf("/stornext/HPCScratch/home/you.y/DE_realdata/summary/pbmc/DE_genes.pdf",width=4,height=4)
-p <- ggplot(de_tmp[!de_tmp$method=="VQW",])+geom_col(aes(x=method,y=n,fill=sig),position = "dodge") +
+#bar plot of DE genes
+ggplot(de_tmp[!de_tmp$method=="VQW",])+geom_col(aes(x=method,y=n,fill=sig),position = "dodge") +
   facet_grid(.~design) +theme_bw() + 
   scale_fill_brewer(palette = "Paired") + labs(x="",y="Number of DE genes",fill="") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
-print(p)
-dev.off()
 
 
-
-
-
-
-pdf("/stornext/HPCScratch/home/you.y/DE_realdata/summary/pbmc/venn.pdf",width=4,height=4)
+#venn plot of DE genes
 vennDiagram(cbind(de_ql[[1]],voom_de[,1],vwq_b_de[,1],vbg_de[,1]),
             circle.col=c("turquoise", "salmon","orange","green"))
-dev.off()
 
-
-
+# GO analysis 
 library(org.Hs.eg.db)
 entrez.ids <- mapIds(org.Hs.eg.db, keys=rownames(vbg_de), 
                      column="ENTREZID", keytype="SYMBOL")
@@ -149,10 +132,6 @@ head(vbg_go)
 #find genes in GO
 library(org.Hs.eg.db)
 library(GO.db)
-GOtable=vbg_go[order(vbg_go$P.DE)[1:20],]
-GOtable <- GOtable[grepl("inter",GOtable$Term),]
-GOtable
-#type1_go_id=rownames(GOtable)[1]
 gamma_go_id="GO:0060333"
 
 
@@ -166,14 +145,6 @@ for (id in gamma_go_id) {
 vbg_gamma<- unique(vbg_gamma)
 vbg_gamma
 
-rownames(vwq_de)[vwq_de[,1]==1]-> vwq_genes
-get_go(vwq_genes) -> vwq_go
-
-vwq_genes[vwq_genes%in% vbg_gamma] -> ag
-vbg_gamma[!vbg_gamma%in% vwq_genes] -> bg
-
-vwq_genes[vwq_genes%in% vbg_type1] ->a
-vbg_type1[!vbg_type1%in% vwq_genes] -> b
 
 
 y_tmp <- y[,y$samples$group%in% c("HC","Asymptomatic")]
@@ -184,28 +155,10 @@ pheatmap(lcpm[c(vbg_gamma),order(y_tmp$samples$group)],
          cluster_cols = FALSE,scale = "row",
          cluster_rows = FALSE)
 
-pheatmap(lcpm[c(ag,bg),order(y_tmp$samples$group)],
-         annotation_col = data.frame(group=y_tmp$samples$group,row.names = rownames(y_tmp$samples)),
-         cluster_cols = FALSE,scale = "row",
-         cluster_rows = FALSE)
 
-
-pdf("/stornext/HPCScratch/home/you.y/DE_realdata/summary/pbmc/go.pdf",width=7,height=4)
-
-GOtable <- GOtable[GOtable$DE>=10,]
-GOtable$Term = factor(GOtable$Term,levels = rev(GOtable$Term))
-ggplot(data=GOtable,aes(x=Term,y=-log10(P.DE),fill=-log10(P.DE)))+
-  geom_bar(stat="identity",show.legend=F)+
-  scale_fill_continuous(type = "viridis")+
-  labs(y="-log10(P value)",x="GO Biological Processes")+
-  theme_bw()+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-                   panel.background = element_blank(), axis.line = element_line(colour = "black"))+
-  coord_flip()
-dev.off()
 
 vbg_go[grepl("interfer",vbg_go$Term),] ->GOtable
 
-pdf("/stornext/HPCScratch/home/you.y/DE_realdata/summary/pbmc/go.pdf",width=7,height=4)
 GOtable$Term = factor(GOtable$Term,levels = rev(GOtable$Term))
 ggplot(data=GOtable,aes(x=Term,y=-log10(P.DE),fill=-log10(P.DE)))+
   geom_bar(stat="identity",show.legend=F)+
@@ -215,21 +168,9 @@ ggplot(data=GOtable,aes(x=Term,y=-log10(P.DE),fill=-log10(P.DE)))+
                    panel.background = element_blank(), axis.line = element_line(colour = "black"))+
   coord_flip()
 
-dev.off()
 
 
-#inferon gamma genes pval
-data.frame(vbg=t_vbg[vbg_gamma,]$adj.P.Val,
-           voom=t_voom[vbg_gamma,]$adj.P.Val,
-           vwq_b=t_vwq_b[vbg_gamma,]$adj.P.Val,
-           lrt=t_lrt$table[vbg_gamma,]$FDR,
-           ql=t_ql$table[vbg_gamma,]$FDR) -> df_gamma
-
-for (i in 2:5){
-  plot(x=df[,1],y=df[,i])
-}
-
-
+#inferon gamma genes pval compare-wise comparisons
 data.frame(vbg=t_vbg$adj.P.Val[match(rownames(t_vbg),rownames(t_vbg))],
            voom=t_voom$adj.P.Val[match(rownames(t_vbg),rownames(t_voom))],
            vwq_b=t_vwq_b$adj.P.Val[match(rownames(t_vbg),rownames(t_vwq_b))],
@@ -237,8 +178,6 @@ data.frame(vbg=t_vbg$adj.P.Val[match(rownames(t_vbg),rownames(t_vbg))],
            ql=t_ql$table$FDR[match(rownames(t_vbg),rownames(t_ql))]) -> df
 
 method <-c ("vbg","voom","voomQWB","edgeR LRT","edgeR QL")
-
-pdf("/stornext/HPCScratch/home/you.y/DE_realdata/summary/pbmc/pval_compare.pdf",width=8,height=6)
 par(mfrow=c(2,3))
 for (i in 2:5){
   plot(x=df[,1],y=df[,i],xlab="Adjusted P values (voomByGroup)", ylab="Adjusted P values",main=method[i],col="grey")
@@ -246,4 +185,3 @@ for (i in 2:5){
   abline(0,1,lwd=2,col="red")
 }
 
-dev.off()

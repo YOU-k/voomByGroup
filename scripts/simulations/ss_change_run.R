@@ -1,7 +1,6 @@
-
 library(limma)
 library(edgeR)
-x <- read.table("/stornext/General/data/user_managed/grpu_mritchie_1/Yue/DE/simulations/itreg_pd.txt")
+x <- read.table("../../data/itreg_pb.txt")
 x <- as.matrix(x)
 
 #get baseline prop
@@ -15,9 +14,21 @@ props1 <- list(c(1,1,1),
 
 props <- props1
 library(SingleCellExperiment)
-#ncells from loop
+#get ncells from loop
+nx=250
+n1=round(sum(props[[1]]*nx))
+n2=round(sum(props[[2]]*nx))
+n3=round(sum(props[[3]]*nx))
+n4=round(sum(props[[4]]*nx))
+
+NCells=n1+n2+n3+n4
+
+#read in reference data
+readRDS("../../data/sce_tmp.rds") -> sce_tmp
+
+#sim exp lib size.
 set.seed(666)
-source("/stornext/HPCScratch/home/you.y/simulation/functions/sim_exp_lib.R")
+source("../functions/sim_exp_lib.R")
 sim_exp_lib(sce = sce_tmp,nCells = NCells) -> exp.lib.sizes
 round(exp.lib.sizes) -> libsize
 
@@ -39,10 +50,7 @@ for (r in 1:50) {
   table(subject,group)
   
   NGenes=10000
-  #read in reference data
-  #readRDS("/stornext/HPCScratch/home/you.y/simulation/sce_cano.rds") -> sce_cano
-  #sce_cano[,sce_cano$cytokine.condition=="iTreg"] -> sce_tmp
-  
+
   
   is.expr <- rowSums(prop>1e-6)>=6
   prop <- prop[is.expr,]
@@ -73,7 +81,7 @@ for (r in 1:50) {
   cbind(mu0.1,mu0.2,mu0.3,mu0.4) -> mu
   
   
-  source("/stornext/HPCScratch/home/you.y/simulation/ngroup_sim/simscRNAseq_group4.R")
+  source("../functions/simscRNAseq_group4.R")
   y <- simscRNAseq_group4(mu,phi=c(0.5,0.5,0.5,0.5),subject,correlation=0.1,group=group)
   
   counts2 <- y
@@ -116,19 +124,16 @@ for (r in 1:50) {
   #keep.exprs <- filterByExpr(y, group=pb$group_id)
   #y <- y[keep.exprs,, keep.lib.sizes=FALSE]
   y <- calcNormFactors(y)
-  
-  limma::plotMDS(edgeR::cpm(y,log=TRUE),col=c(rep("black",3), rep("red",3),rep("green",3),rep("blue",3)),pch=19,
-                 cex=scale(unlist(props))+1)
+
   
   limma::plotMDS(edgeR::cpm(y,log=TRUE),col=c(rep("black",3), rep("red",3),rep("green",3),rep("blue",3)),
                  label=unlist(props))
   
   #estimateDisp(y)
   #design <- model.matrix(formula, cd1)
-  source("/stornext/HPCScratch/home/you.y/simulation/functions/DE_methods.R")
-  apply_voombygroup(y,design = design,cond = cond,contr.matrix = contr.matrix,dynamic = NULL) -> fit_vbg
- 
   
+  source("../functions/DE_methods.R")
+  apply_voombygroup(y,design = design,cond = cond,contr.matrix = contr.matrix,dynamic = NULL) -> fit_vbg
   apply_voomwithqualityweight(y,design = design,contr.matrix = contr.matrix) -> fit_vwq
   apply_voomwithqualityweight_block(y,design = design,contr.matrix = contr.matrix,cond=cond) -> fit_vwq_block
   apply_voom(y,design = design,contr.matrix = contr.matrix) -> fit_voom
@@ -161,7 +166,7 @@ for (r in 1:50) {
     tmp_all$contr <- colnames(contr.matrix)[d]
     rbind(df_all,tmp_all) -> df_all
   }}
-saveRDS(df_all,"/stornext/HPCScratch/home/you.y/simulation/ngroup_sim/ss_change_new/df_all.rds")
+#saveRDS(df_all,"../../data/df_all.rds")
 
 
 

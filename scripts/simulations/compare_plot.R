@@ -1,10 +1,5 @@
-setwd("/stornext/HPCScratch/home/you.y/simulation/ngroup_sim/bcv_change/")
+#need to read in df_all.rds from simulation first.
 #0.05
-library(RColorBrewer) 
-brewer.pal(6,"Paired") -> col
-names(col) <- c("LL","Low vs Low","LH","Low vs High","HH","High vs High")
-
-
 df_summary_all <- tibble()
 de_list <- list(c("de1","de2"),
                 c("de1","de3"),
@@ -33,20 +28,12 @@ for (ct in 1:length(uct)){
 table(df_summary_all$design)
 df_summary_all %>% group_by(method,design) %>% summarise(n=sum(p),FDR=mean(FDR)) -> df_tmp
 
-df_tmp$design[df_tmp$design=="group1vsgroup2"] <- "Low vs Low"
-df_tmp$design[df_tmp$design=="group1vsgroup4"] <- "Low vs High"
-df_tmp$design[df_tmp$design=="group1vsgroup3"] <- "Low vs High"
-df_tmp$design[df_tmp$design=="group2vsgroup3"] <- "Low vs High"
-df_tmp$design[df_tmp$design=="group2vsgroup4"] <- "Low vs High"
-df_tmp$design[df_tmp$design=="group3vsgroup4"] <- "High vs High"
-
 
 library(ggsci)
 ggplot(df_tmp,aes(x=method,y=FDR,col=design)) + 
   geom_point(size=3.2,shape=1,stroke=1) +
   geom_hline(yintercept = 0.05,linetype="dashed")+
   theme_bw()+
-  scale_color_manual(values=col)+
   labs(y="FDR (alpha=0.05)",x="",col="Comparison")+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
 
 

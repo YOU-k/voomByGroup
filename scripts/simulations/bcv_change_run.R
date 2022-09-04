@@ -1,6 +1,6 @@
 library(limma)
 library(edgeR)
-x <- read.table("/stornext/General/data/user_managed/grpu_mritchie_1/Yue/DE/simulations/itreg_pd.txt")
+x <- read.table("../../data/itreg_pb.txt")
 x <- as.matrix(x)
 #get baseline prop
 prop <- goodTuringProportions(x)
@@ -11,8 +11,22 @@ props1 <- list(c(1,1,1),
 
 props <- props1
 
+#get ncells from loop
+nx=250
+n1=round(sum(props[[1]]*nx))
+n2=round(sum(props[[2]]*nx))
+n3=round(sum(props[[3]]*nx))
+n4=round(sum(props[[4]]*nx))
+
+NCells=n1+n2+n3+n4
+
+#read in reference data
+readRDS("../../data/sce_tmp.rds") -> sce_tmp
+
+
+#sim exp lib size.
 set.seed(666)
-source("/stornext/HPCScratch/home/you.y/simulation/functions/sim_exp_lib.R")
+source("../functions/sim_exp_lib.R")
 sim_exp_lib(sce = sce_tmp,nCells = NCells) -> exp.lib.sizes
 round(exp.lib.sizes) -> libsize
 
@@ -35,9 +49,6 @@ for (r in 1:50) {
   table(subject,group)
   
   NGenes=10000
-  #read in reference data
-  #readRDS("/stornext/HPCScratch/home/you.y/simulation/sce_cano.rds") -> sce_cano
-  #sce_cano[,sce_cano$cytokine.condition=="iTreg"] -> sce_tmp
   
   is.expr <- rowSums(prop>1e-6)>=6
   prop <- prop[is.expr,]
@@ -114,11 +125,10 @@ for (r in 1:50) {
   limma::plotMDS(lcpm,col=c(rep("black",3), rep("red",3),rep("green",3),rep("blue",3)), 
           labels= c(rep("Grp1",3), rep("Grp2",3),rep("Grp3",3),rep("Grp4",3)))
   
-  
-  
+
   #estimateDisp(y)
   #design <- model.matrix(formula, cd1)
-  source("/stornext/HPCScratch/home/you.y/simulation/functions/DE_methods.R")
+  source("../functions/DE_methods.R")
   #pdf("vbg_bcv.pdf",width = 4,height = 4)
   apply_voombygroup(y,design = design,cond = cond,contr.matrix = contr.matrix,dynamic = NULL) -> fit_vbg
   #dev.off()
@@ -158,7 +168,7 @@ for (r in 1:50) {
   #voom methods
   
 }
-saveRDS(df_all,"/stornext/HPCScratch/home/you.y/simulation/ngroup_sim/bcv_change/df_all_6compare.rds")
+#saveRDS(df_all,"../../data/df_all.rds")
 
 
 
