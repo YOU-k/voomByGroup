@@ -79,7 +79,7 @@ for (r in 1:50) {
   cbind(mu0.1,mu0.2,mu0.3,mu0.4) -> mu
   
   
-  source("/stornext/HPCScratch/home/you.y/simulation/ngroup_sim/simscRNAseq_group4.R")
+  source("../functions/simscRNAseq_group4.R")
   y <- simscRNAseq_group4(mu,phi=c(0.4,0.4,0.4,0.4),subject,correlation=0.1,group=group)
   
   counts2 <- y
