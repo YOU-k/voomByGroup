@@ -1,5 +1,5 @@
 apply_voombygroup <- function(y,design,cond,contr.matrix,dynamic){
-  source("/stornext/HPCScratch/home/you.y/simulation/functions/voomByGroup.R")
+  source("../../voomByGroup.R")
   voomByGroup(y, design = design,group=cond,plot="all",dynamic = dynamic) -> y
   fit <- lmFit(y, design)
   vfit <- contrasts.fit(fit, contrasts=contr.matrix)
